@@ -1,0 +1,9 @@
+*.class
+/.idea/
+/target
+/out
+/classes
+/compilation.log
+/kotlin-cgdk.jar
+*iml
+
