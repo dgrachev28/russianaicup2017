@@ -6,6 +6,7 @@ import kotlin.math.abs
 private val scaleAirAlpha = 2
 private val unitShift = 6.0
 private val centerEps = 5.0
+private val minAirGroupCenter = 65.0
 
 var startGrouped = false
 var startAirGroup = 0
@@ -13,8 +14,6 @@ var startAirGroup = 0
 fun startGroupAir() {
     clearAndSelect(VehicleType.FIGHTER)
     addToSelection(VehicleType.HELICOPTER)
-//    val vehicles = streamVehicles(VehicleType.FIGHTER).filter { it.groups.isNotEmpty() }
-//    val bomber = streamVehicles(VehicleType.FIGHTER).maxWith(Comparator { o1, o2 -> sign(o1.x + o1.y - o2.x - o2.y).toInt() })
 
     deselect(moveUpdater = {
         val vehicles = streamVehicles(VehicleType.FIGHTER).filter { it.groups.isNotEmpty() }
@@ -30,7 +29,11 @@ fun startGroupAir() {
     freeGroups.remove(startAirGroup)
     assign(startAirGroup)
 
-    if (abs(getAlliedCenterX(VehicleType.FIGHTER) - getAlliedCenterX(VehicleType.HELICOPTER)) < centerEps) {
+    val fightersCenterX = getAlliedCenterX(VehicleType.FIGHTER)
+    val helicopsCenterX = getAlliedCenterX(VehicleType.HELICOPTER)
+    val helicopsCenterY = getAlliedCenterY(VehicleType.HELICOPTER)
+    val fightersCenterY = getAlliedCenterY(VehicleType.FIGHTER)
+    if (abs(fightersCenterX - helicopsCenterX) < centerEps) {
         scaleAir(VehicleType.FIGHTER, true, 0.0) { it.x }
         scaleAir(VehicleType.HELICOPTER, true, unitShift) { it.x }
     } else {
@@ -38,13 +41,15 @@ fun startGroupAir() {
         scaleAir(VehicleType.HELICOPTER, false, unitShift) { it.y }
     }
 
-    if (abs(getAlliedCenterX(VehicleType.FIGHTER) - getAlliedCenterX(VehicleType.HELICOPTER)) < centerEps) {
-        clearAndSelect(group = startAirGroup)
-        move(y = getAlliedCenterY(VehicleType.HELICOPTER) - getAlliedCenterY(VehicleType.FIGHTER))
-    } else {
-        clearAndSelect(group = startAirGroup)
-        move(x = getAlliedCenterX(VehicleType.HELICOPTER) - getAlliedCenterX(VehicleType.FIGHTER))
+    delay {
+        clearAndSelect(VehicleType.FIGHTER, rect = calcRectangle(startAirGroup, VehicleType.FIGHTER), queue = startAirGroup, useNegativeTime = true)
+        if (abs(fightersCenterX - helicopsCenterX) < centerEps) {
+            move(y = helicopsCenterY - fightersCenterY, queue = startAirGroup, useNegativeTime = true)
+        } else {
+            move(x = helicopsCenterX - fightersCenterX, queue = startAirGroup, useNegativeTime = true)
+        }
     }
+
 //    clearAndSelect(VehicleType.FIGHTER)
 //    addToSelection(VehicleType.HELICOPTER)
 //    scale(factor = 0.6, maxSpeed = 5.0, moveUpdater = {
@@ -55,23 +60,28 @@ fun startGroupAir() {
 }
 
 private fun scaleAir(vehicleType: VehicleType, isX: Boolean, shift: Double, coord: (Vehicle) -> Double) {
-    val vehicles = streamVehicles(vehicleType).sortedBy(coord)
+
+    val airCenter = streamVehicles(listOf(VehicleType.FIGHTER, VehicleType.HELICOPTER)).map(coord).average()
+    val typeCenter = streamVehicles(listOf(vehicleType)).map(coord).average()
 
     for (i in 0..9) {
-        val veh = vehicles.subList(10 * i, 10 * i + 10).filter { it.groups.contains(startAirGroup) } // TODO тут баг
+        delay(interrupt = true) {
+            val j = if (i < 5) i else 14 - i
+            val vehicles = streamVehicles(vehicleType).sortedBy(coord).subList(10 * j, 10 * j + 10).filter { it.groups.contains(startAirGroup) } // TODO тут баг
 
-        val curx = veh.map(coord).average()
-        val curcx = streamVehicles(listOf(vehicleType)).map(coord).average()
-        val cx = max(60.0, streamVehicles(listOf(VehicleType.FIGHTER, VehicleType.HELICOPTER)).map(coord).average()) + shift
-        val x = curx - curcx + cx
+            val curx = vehicles.map(coord).average()
+            val curcx = typeCenter
+            val cx = max(minAirGroupCenter, airCenter) - shift
+            val x = curx - curcx + cx
 
-        val tx = (x - cx) * scaleAirAlpha + cx
+            val tx = (x - cx) * scaleAirAlpha + cx
 
-        clearAndSelect(vehicleType, getSelectionRectangle(veh), interrupt = true)
-        if (isX) {
-            move(tx - curx, interrupt = true)
-        } else {
-            move(y = tx - curx, interrupt = true)
+            clearAndSelect(vehicleType, getSelectionRectangle(vehicles), interrupt = true, queue = startAirGroup, useNegativeTime = true)
+            if (isX) {
+                move(tx - curx, interrupt = true,queue = startAirGroup, useNegativeTime = true)
+            } else {
+                move(y = tx - curx, interrupt = true, queue = startAirGroup, useNegativeTime = true)
+            }
         }
     }
 }

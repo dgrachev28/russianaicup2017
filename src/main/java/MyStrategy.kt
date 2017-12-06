@@ -23,6 +23,10 @@ var nuclearEvasionTicks: Int = 0
 
 val freeGroups = (1..100).toMutableSet()
 
+val startCoord1 = 45.0
+val startCoord2 = 119.0
+val startCoord3 = 193.0
+
 
 class MyStrategy : Strategy {
 
@@ -60,12 +64,16 @@ class MyStrategy : Strategy {
     }
 
     private fun move() {
-        if (!startGrouped) startGroupAir()
+        startGroupLand()
+//        if (!startGrouped) startGroupAir()
         if (avoidNuclearStrike()) return
-        if (!isBomberFormed()) {
+        if (!isBomberFormed() && shouldStart()) {
             formBomberGroup()
         }
-        actBomber()
+        if (isBomberFormed()) {
+            actBomber()
+        }
+        sendGroups()
     }
 
 

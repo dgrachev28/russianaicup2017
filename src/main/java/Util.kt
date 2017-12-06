@@ -73,7 +73,10 @@ fun getVisionCoefByTerrainAndWeather(terrainType: TerrainType, weatherType: Weat
 }
 
 
-fun getSelectionRectangle(vehicles: List<Vehicle>): Rectangle =
+fun calcRectangle(group: Int, vehicleType: VehicleType) =
+        getSelectionRectangle(streamVehicles(group, listOf(vehicleType)))
+
+fun getSelectionRectangle(vehicles: Iterable<Vehicle>): Rectangle =
         Rectangle(vehicles.map { it.x }.min()!! - eps,
                 vehicles.map { it.y }.min()!! - eps,
                 vehicles.map { it.x }.max()!! + eps,
@@ -139,5 +142,6 @@ enum class Ownership {
 }
 
 fun printMove(move: Move) {
+    println("Tick=${world!!.tickIndex}")
     println("Move(action=${move.action}, group=${move.group}, left=${move.left}, top=${move.top}, right=${move.right}, bottom=${move.bottom}, x=${move.x}, y=${move.y}, angle=${move.angle}, factor=${move.factor}, maxSpeed=${move.maxSpeed}, maxAngularSpeed=${move.maxAngularSpeed}, vehicleType=${move.vehicleType}, facilityId=${move.facilityId}, vehicleId=${move.vehicleId})")
 }
