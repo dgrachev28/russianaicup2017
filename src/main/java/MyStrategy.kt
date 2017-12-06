@@ -66,7 +66,7 @@ class MyStrategy : Strategy {
     private fun move() {
         startGroupLand()
 //        if (!startGrouped) startGroupAir()
-        if (avoidNuclearStrike()) return
+//        if (avoidNuclearStrike()) return
         if (!isBomberFormed() && shouldStart()) {
             formBomberGroup()
         }
@@ -113,7 +113,17 @@ class MyStrategy : Strategy {
         return false
     }
 
+
+    var oldStrategy: OldMyStrategy? = null
+
     override fun move(me: Player, world: World, game: Game, move: Move) {
+        if (world.facilities.isEmpty()) {
+            if (oldStrategy == null) {
+                oldStrategy = OldMyStrategy()
+            }
+            oldStrategy!!.move(me, world, game, move)
+            return
+        }
         initializeStrategy(world, game)
         initializeTick(me, world, game, move)
 

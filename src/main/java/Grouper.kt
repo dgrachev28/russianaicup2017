@@ -41,7 +41,7 @@ fun startGroupAir() {
         scaleAir(VehicleType.HELICOPTER, false, unitShift) { it.y }
     }
 
-    delay {
+    delay (queue = startAirGroup) {
         clearAndSelect(VehicleType.FIGHTER, rect = calcRectangle(startAirGroup, VehicleType.FIGHTER), queue = startAirGroup, useNegativeTime = true)
         if (abs(fightersCenterX - helicopsCenterX) < centerEps) {
             move(y = helicopsCenterY - fightersCenterY, queue = startAirGroup, useNegativeTime = true)
@@ -50,12 +50,13 @@ fun startGroupAir() {
         }
     }
 
-//    clearAndSelect(VehicleType.FIGHTER)
-//    addToSelection(VehicleType.HELICOPTER)
-//    scale(factor = 0.6, maxSpeed = 5.0, moveUpdater = {
-//        it.x = streamVehicles(Ownership.ALLY, listOf(VehicleType.FIGHTER, VehicleType.HELICOPTER)).map { it.x }.average()
-//        it.y = streamVehicles(Ownership.ALLY, listOf(VehicleType.FIGHTER, VehicleType.HELICOPTER)).map { it.y }.average()
-//    })
+    delay (queue = startAirGroup) {
+        clearAndSelect(group = startAirGroup, queue = startAirGroup)
+        val x = streamVehicles(startAirGroup).map { it.x }.average()
+        val y = streamVehicles(startAirGroup).map { it.y }.average()
+        scale(x, y, factor = 0.6, queue = startAirGroup)
+        move(300 - x, 300 - y, queue = startAirGroup)
+    }
     startGrouped = true
 }
 
