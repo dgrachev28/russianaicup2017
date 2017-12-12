@@ -14,12 +14,11 @@ private var waiting = false
 var startLandGroup = 0
 
 
-
 fun startGroupLand() {
     if (state === LandGroupState.MERGED)
         return
     if (waiting) {
-        if (streamVehicleUpdates(Ownership.ALLY, startLandGroup).count() == 0 && getQueueSize(startLandGroup) == 0) {
+        if (streamVehicleUpdates(startLandGroup).count() == 0 && getQueueSize(startLandGroup) == 0) {
             state = LandGroupState.values()[state.ordinal + 1]
             waiting = false
         } else return
@@ -32,6 +31,11 @@ fun startGroupLand() {
     }
     if (state === LandGroupState.SCALED_UP) {
         mergeLandGroups()
+    }
+    if (state === LandGroupState.DISBANDED) {
+        freeGroups.add(startLandGroup)
+        disband(startLandGroup, interrupt = true, queue = startLandGroup)
+        startLandGroup = 0
     }
     waiting = true
 }
@@ -86,7 +90,7 @@ private fun mergeLandGroups() {
         for (i in 0..2) {
             val group = freeGroups.first()
             freeGroups.remove(group)
-            landGroups.add(group)
+            facilityGroups.add(group)
 
             val top = landVehicles.map { it.y }.min()!! - 3 + 60 * i
             val bottom = top + 60
@@ -104,7 +108,7 @@ private fun mergeLandGroups() {
         for (i in 0..2) {
             val group = freeGroups.first()
             freeGroups.remove(group)
-            landGroups.add(group)
+            facilityGroups.add(group)
 
             val top = landVehicles.map { it.x }.min()!! - 3 + 60 * i
             val bottom = top + 60
@@ -114,12 +118,6 @@ private fun mergeLandGroups() {
             assign(group, interrupt = true, queue = group)
         }
     }
-
-//    startLandGroup = 0
-//    freeGroups.add(startLandGroup)
-//    disband(100)
-
-
 }
 
 
@@ -184,5 +182,5 @@ private fun scaleLand(vehicleType: VehicleType, isX: Boolean, shift: Double, coo
 fun isLandGrouped(): Boolean = state == LandGroupState.MERGED
 
 private enum class LandGroupState {
-    START, THREE_IN_ROW, SCALED_UP, MERGED
+    START, THREE_IN_ROW, SCALED_UP, DISBANDED, MERGED
 }

@@ -16,6 +16,8 @@ val vehicleById = HashMap<Long, Vehicle>()
 var previousVehicleById: Map<Long, Vehicle> = HashMap()
 private val updateTickByVehicleId = HashMap<Long, Int>()
 
+var enemyGroups = emptyList<VehicleGroup>()
+
 var nuclearX: Double = 0.0
 var nuclearY: Double = 0.0
 var nuclearGroup = IntArray(0)
@@ -44,6 +46,7 @@ class MyStrategy : Strategy {
         game = pGame
         move = pMove
         previousVehicleById = HashMap(vehicleById)
+        enemyGroups = getEnemyGroups()
 
         for (vehicle in world!!.newVehicles) {
             vehicleById.put(vehicle.id, vehicle)
@@ -64,20 +67,76 @@ class MyStrategy : Strategy {
     }
 
     private fun move() {
+        startGroupAir()
         startGroupLand()
-//        if (!startGrouped) startGroupAir()
-//        if (avoidNuclearStrike()) return
-        if (!isBomberFormed() && shouldStart()) {
-            formBomberGroup()
+        if (avoidNuclearStrike()) return
+
+        if (!isAirGrouped()) {
+            if (!isBomberFormed() && shouldStart()) {
+                formBomberGroup()
+            }
+            if (isBomberFormed()) {
+                actBomber()
+            }
+        } else {
+            nuclearAttack()
         }
-        if (isBomberFormed()) {
-            actBomber()
-        }
+
         sendGroups()
     }
 
+    private fun nuclearAttack(): Boolean {
+        if (me!!.remainingNuclearStrikeCooldownTicks != 0) {
+            return false
+        }
+        for (enemyGroup in enemyGroups) {
+            for (vehicle in vehicleById.values) {
+                if (vehicle.playerId != me!!.id) {
+                    continue
+                }
+                val coef = getVisionCoef(vehicle)
+                if (vehicle.getDistanceTo(enemyGroup.x, enemyGroup.y) < vehicle.visionRange * coef) {
+                    var allyGroupSize = 0
+                    for (veh in vehicleById.values) {
+                        if (veh.playerId == me!!.id && veh.getDistanceTo(enemyGroup.x, enemyGroup.y) < 40) {
+                            allyGroupSize++
+                            if (allyGroupSize > enemyGroup.vehicles.size) {
+                                break
+                            }
+                        }
+                    }
 
-    private fun avoidNuclearStrike() : Boolean {
+                    if (allyGroupSize < enemyGroup.vehicles.size) {
+                        nuclearStrike(enemyGroup.x, enemyGroup.y, vehicle.id, priority = 3, interrupt = true)
+                        return true
+                    }
+                }
+            }
+        }
+        return false
+    }
+
+
+    private fun avoidNuclearStrike(): Boolean {
+        if (!isAirGrouped() || !isLandGrouped()) {
+            return false
+        }
+        if (nuclearEvasionTicks != 0) {
+            if (world!!.opponentPlayer.nextNuclearStrikeTickIndex == -1) {
+                if (nuclearGroup.isEmpty()) {
+//                    clearAndSelect(left = nuclearX - 70, top = nuclearY - 70, bottom = nuclearX + 70, right = nuclearX + 70, priority = 2, interrupt = true)
+//                    scale(nuclearX, nuclearY, factor = 10.0, priority = 2, interrupt = true)
+                } else {
+                    nuclearGroup.forEach {
+                        clearAndSelect(group = it, priority = 2, interrupt = true, queue = it)
+                        scale(nuclearX, nuclearY, factor = 0.1, priority = 2, interrupt = true, queue = it)
+                    }
+                    nuclearGroup = IntArray(0)
+                }
+            }
+            nuclearEvasionTicks--
+            return true
+        }
         if (world!!.opponentPlayer.nextNuclearStrikeTickIndex != -1) {
             nuclearX = world!!.opponentPlayer.nextNuclearStrikeX
             nuclearY = world!!.opponentPlayer.nextNuclearStrikeY
@@ -86,28 +145,15 @@ class MyStrategy : Strategy {
             nuclearY = vehicle.y
             nuclearGroup = vehicle.groups
             if (nuclearGroup.isEmpty()) {
-                clearAndSelect(priority = 2, interrupt = true)
-                scale(nuclearX, nuclearY, factor = 10.0, priority = 2, interrupt = true)
+//                clearAndSelect(left = nuclearX - 70, top = nuclearY - 70, bottom = nuclearX + 70, right = nuclearX + 70, priority = 2, interrupt = true)
+//                scale(nuclearX, nuclearY, factor = 10.0, priority = 2, interrupt = true)
             } else {
                 nuclearGroup.forEach {
-                    scale(nuclearX, nuclearY, it, factor = 10.0, priority = 2, interrupt = true)
+                    clearAndSelect(group = it, priority = 2, interrupt = true, queue = it)
+                    scale(nuclearX, nuclearY, factor = 10.0, priority = 2, interrupt = true, queue = it)
                 }
             }
             nuclearEvasionTicks = 40
-            return true
-        }
-        if (nuclearEvasionTicks != 0) {
-            if (world!!.opponentPlayer.nextNuclearStrikeTickIndex == -1) {
-                if (nuclearGroup.isEmpty()) {
-                    clearAndSelect(priority = 2, interrupt = true)
-                    scale(nuclearX, nuclearY, factor = 0.1, priority = 2, interrupt = true)
-                } else {
-                    nuclearGroup.forEach {
-                        scale(nuclearX, nuclearY, it, factor = 0.1, priority = 2, interrupt = true)
-                    }
-                }
-            }
-            nuclearEvasionTicks--
             return true
         }
         return false

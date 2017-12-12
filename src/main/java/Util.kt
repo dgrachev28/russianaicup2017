@@ -1,15 +1,18 @@
 import model.*
-import java.util.ArrayList
 
 private val eps = 0.1
+private val mapSize = 128
+private val squareSize = 8 // squareSize * mapSize = 1024  - Размер всей карты
 
-class VehicleGroup(vehicle: Vehicle) {
+
+
+class VehicleGroup(vehicle: Vehicle? = null) {
     var vehicles: MutableList<Vehicle> = mutableListOf()
     var x: Double = 0.toDouble()
     var y: Double = 0.toDouble()
 
     init {
-        addVehicle(vehicle)
+        vehicle?.let { addVehicle(it) }
     }
 
     fun addVehicle(vehicle: Vehicle) {
@@ -19,27 +22,31 @@ class VehicleGroup(vehicle: Vehicle) {
     }
 }
 
-fun getEnemyVehicleGroups(visionRadius: Int): List<VehicleGroup> {
-    val nearEnemies = ArrayList<VehicleGroup>()
-    val centerX = getAlliedCenterX()
-    val centerY = getAlliedCenterY()
-    for (vehicle in vehicleById.values) {
-        if (vehicle.playerId != me!!.id && vehicle.getDistanceTo(centerX, centerY) < visionRadius) {
-            var addedToGroup = false
-            for (group in nearEnemies) {
-                if (group.x - vehicle.x < 30) {
-                    group.addVehicle(vehicle)
-                    addedToGroup = true
-                    break
-                }
+fun getEnemyGroups(): List<VehicleGroup> {
+    val map: Array<Array<MutableList<Vehicle>>> = Array(mapSize, { Array(mapSize, { mutableListOf<Vehicle>() }) })
+    val visited: Array<BooleanArray> = Array(mapSize, { BooleanArray(mapSize) })
+    streamVehicles(Ownership.ENEMY).forEach { map[(it.x / squareSize).toInt()][(it.y / squareSize).toInt()].add(it) }
+
+    val groups = mutableListOf<VehicleGroup>()
+
+    for (i in 0 until mapSize) {
+        for (j in 0 until mapSize) {
+            if (visited[i][j]) {
+                continue
             }
-            if (!addedToGroup) {
-                nearEnemies.add(VehicleGroup(vehicle))
+            if (map[i][j].isNotEmpty()) {
+                val vehicleGroup = VehicleGroup()
+                dfs(i, j, map, visited, vehicleGroup)
+                groups.add(vehicleGroup)
             }
         }
     }
+    sortEnemies(groups)
+    return groups
+}
 
-    nearEnemies.sortWith(Comparator { o1, o2 ->
+fun sortEnemies(groups: MutableList<VehicleGroup>) {
+    groups.sortWith(Comparator { o1, o2 ->
         val percentHP1 = o1.vehicles.map { v -> v.durability.toDouble() / v.maxDurability }.sum()
         val percentHP2 = o2.vehicles.map { v -> v.durability.toDouble() / v.maxDurability }.sum()
         if (percentHP1 < 0.75 && o1.vehicles.size > 5 || percentHP2 < 0.75 && o2.vehicles.size > 5) {
@@ -48,7 +55,27 @@ fun getEnemyVehicleGroups(visionRadius: Int): List<VehicleGroup> {
             o2.vehicles.size - o1.vehicles.size
         }
     })
-    return nearEnemies
+}
+
+fun dfs(i: Int, j: Int, map: Array<Array<MutableList<Vehicle>>>, visited: Array<BooleanArray>, res: VehicleGroup) {
+    if (visited[i][j] || map[i][j].isEmpty()) {
+        return
+    }
+
+    map[i][j].forEach { res.addVehicle(it) }
+    visited[i][j] = true
+    if (i > 0) {
+        dfs(i - 1, j, map, visited, res)
+    }
+    if (j > 0) {
+        dfs(i, j - 1, map, visited, res)
+    }
+    if (i < map.size - 1) {
+        dfs(i + 1, j, map, visited, res)
+    }
+    if (j < map[0].size - 1) {
+        dfs(i, j + 1, map, visited, res)
+    }
 }
 
 
@@ -88,7 +115,7 @@ data class Rectangle(val left: Double,
                      val right: Double,
                      val bottom: Double)
 
-fun streamVehicleUpdates(ownership: Ownership, group: Int = 0, vehicleType: VehicleType? = null): Iterable<Vehicle> {
+fun streamVehicleUpdates(group: Int = 0, ownership: Ownership = Ownership.ALLY, vehicleType: VehicleType? = null): Iterable<Vehicle> {
     val stream = world!!.vehicleUpdates
             .filter { it.durability != 0 }
             .filter { if (group != 0) it.groups.contains(group) else it.groups.isEmpty() }

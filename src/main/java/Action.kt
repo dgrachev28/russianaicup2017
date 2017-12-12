@@ -106,6 +106,8 @@ private fun addMove(moveWrapper: MoveWrapper) {
 fun makeAction(move: Move) {
     if (moves.isEmpty()) return
 
+    println("Queues total size: ${moves.flatMap { it.value }.count()}")
+
     var moveWrapper = moves.filterValues { it.isNotEmpty() }
             .map { it.value.peek() }.sorted()
             .let { if (it.isEmpty()) return else it[0] }
@@ -131,10 +133,10 @@ fun makeAction(move: Move) {
     }
 }
 
-fun getQueueSize(queue: Int) = moves[queue]!!.count()
+fun getQueueSize(queue: Int) = if (moves[queue] == null) 0 else moves[queue]!!.count()
 
 private fun isGroupStoppedMotion(moveWrapper: MoveWrapper) =
-        streamVehicleUpdates(Ownership.ALLY, moveWrapper.queue).count() == 0
+        streamVehicleUpdates(moveWrapper.queue).count() == 0
 
 private class MoveWrapper constructor(
         val move: (Move) -> Unit,

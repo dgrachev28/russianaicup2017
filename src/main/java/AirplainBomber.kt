@@ -3,24 +3,24 @@ import model.VehicleType
 import kotlin.math.hypot
 import kotlin.math.sign
 
-private val attackRangeSuffix = 10
+private val attackRangeSuffix = 30
 
-private var bomberGroup: Int = 0
+var bomberGroup: Int = 0
 private var enemyVehicleGroups = emptyList<VehicleGroup>()
 
 private var moveBomberTimeout = 0
-private var checkEnemyTimeout = 0
 private var formBomberInQueue = false
 
+private var bomberMoveFromEnemy = false
 
 fun formBomberGroup() {
     val bomber = streamVehicles(VehicleType.FIGHTER).maxWith(Comparator { o1, o2 -> sign(o1.x + o1.y - o2.x - o2.y).toInt() })
-    bomber!!.let {
+    bomber?.let {
         bomberGroup = 100
         freeGroups.remove(bomberGroup)
-        clearAndSelect(rect = getSelectionRectangle(listOf(bomber)), priority = 5, interrupt = true)
-        if (startAirGroup != 0) dismiss(startAirGroup, priority = 5, interrupt = true)
-        assign(bomberGroup, priority = 5, interrupt = true)
+        clearAndSelect(rect = getSelectionRectangle(listOf(bomber)), priority = 5, interrupt = true, queue = bomberGroup)
+        if (startAirGroup != 0) dismiss(startAirGroup, priority = 5, interrupt = true, queue = bomberGroup)
+        assign(bomberGroup, priority = 5, interrupt = true, queue = bomberGroup)
         formBomberInQueue = true
     }
 }
@@ -44,20 +44,28 @@ fun actBomber() {
         if (formBomberInQueue) return else formBomberGroup()
     }
 
-    enemyVehicleGroups = getEnemyVehicleGroups(1450)
+    enemyVehicleGroups = enemyGroups
 
 
-    if (checkEnemyTimeout == 0) {
-        checkEnemyTimeout = 10
-        if (checkEnemyInAttackRange()) return
-    } else checkEnemyTimeout--
+    if (streamVehicleUpdates(bomberGroup).count() == 0 && getQueueSize(bomberGroup) == 0) {
+        bomberMoveFromEnemy = false
+        moveBomberTimeout = 0
+    }
+
+    if (!bomberMoveFromEnemy) {
+        if (checkEnemyInAttackRange()) {
+            bomberMoveFromEnemy = true
+            return
+        }
+    }
 
     if (checkEnemyInVisionRange()) return
-    if (moveBomberTimeout == 0) {
-        moveToEnemy()
-        moveBomberTimeout = 100
-    } else moveBomberTimeout--
-
+    if (enemyVehicleGroups.isNotEmpty()) {
+        if (moveBomberTimeout == 0) {
+            moveToEnemy()
+            moveBomberTimeout = 100
+        } else moveBomberTimeout--
+    }
 }
 
 private fun checkEnemyInAttackRange(): Boolean {
@@ -67,8 +75,8 @@ private fun checkEnemyInAttackRange(): Boolean {
         enemy != null
     }
     if (ally != null && enemy != null) {
-        clearAndSelect(group = bomberGroup, priority = 5, interrupt = true)
-        move(ally.x - enemy!!.x, ally.y - enemy!!.y, group = bomberGroup, priority = 5, interrupt = true)
+        clearAndSelect(group = bomberGroup, priority = 5, interrupt = true, queue = bomberGroup)
+        move((ally.x - enemy!!.x), (ally.y - enemy!!.y), priority = 5, interrupt = true, queue = bomberGroup)
         return true
     }
     return false
@@ -79,7 +87,7 @@ private fun checkEnemyInVisionRange(): Boolean {
     streamVehicles(bomberGroup).forEach { ally ->
         val target = enemyVehicleGroups.find { hypot(ally.x - it.x, ally.y - it.y) < ally.visionRange * getVisionCoef(ally) }
         if (target != null) {
-            nuclearStrike(target.x, target.y, ally.id, priority = 5, interrupt = true)
+            nuclearStrike(target.x - (target.x - ally.x) * 0.9, target.y - (target.y - ally.y) * 0.9, ally.id, priority = 5, interrupt = true)
             return true
         }
     }
@@ -87,13 +95,10 @@ private fun checkEnemyInVisionRange(): Boolean {
 }
 
 private fun moveToEnemy() {
-//    delay (group = bomberGroup, priority = 5, interrupt = true) {
-        val x = streamVehicles(bomberGroup).map { it.x }.average()
-        val y = streamVehicles(bomberGroup).map { it.y }.average()
-        enemyVehicleGroups.first().let {
-            clearAndSelect(group = bomberGroup, priority = 5, interrupt = true)
-            move(it.x - x, it.y - y, group = bomberGroup, priority = 5, interrupt = true)
-        }
-//    }
-
+    val x = streamVehicles(bomberGroup).map { it.x }.average()
+    val y = streamVehicles(bomberGroup).map { it.y }.average()
+    enemyVehicleGroups.first().let {
+        clearAndSelect(group = bomberGroup, priority = 5, interrupt = true, queue = bomberGroup)
+        move(it.x - x, it.y - y, priority = 5, interrupt = true, queue = bomberGroup)
+    }
 }
