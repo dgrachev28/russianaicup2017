@@ -28,7 +28,10 @@ fun setupFacilities() {
         } else if (facilitiesTick.contains(it.id) && facilitiesTick[it.id]!! + facilitiesTicksPeriod <= world!!.tickIndex) {
             val group = freeGroups.first()
             freeGroups.remove(group)
-            clearAndSelect(left = it.left, top = it.top, right = it.left + facilityLength, bottom = it.top + facilityLength, queue = group)
+            val rectangle = Rectangle(it.left, it.top, it.left + facilityLength, it.top + facilityLength)
+            clearAndSelect(rect = rectangle, queue = group)
+            getAlliesInRectangle(rectangle).flatMap {it.groups.toList()}.distinct().forEach { dismiss(it, queue = group) }
+
             assign(group, queue = group)
 
             if (listOf(VehicleType.IFV, VehicleType.ARRV, VehicleType.TANK).contains(it.vehicleType)) {
@@ -84,7 +87,8 @@ fun manageAirGroups() {
                     distX *= maxMoveDistance * 3 / hypot
                     distY *= maxMoveDistance * 3 / hypot
                 }
-                move(distX, distY, maxSpeed = 0.6, queue = ally)
+                clearAndSelect(group = ally, queue = ally)
+                move(distX, distY, maxSpeed = 0.6, interrupt = true, queue = ally)
             }
 
             val powers = enemyGroups.associateBy({ it }, { comparePower(ally, it.vehicles) })
@@ -100,7 +104,8 @@ fun manageAirGroups() {
                     distX *= maxMoveDistance / hypot
                     distY *= maxMoveDistance / hypot
                 }
-                move(distX, distY, maxSpeed = 0.6, queue = ally)
+                clearAndSelect(group = ally, queue = ally)
+                move(distX, distY, maxSpeed = 0.6, interrupt = true, queue = ally)
             }
         }
 
@@ -139,9 +144,7 @@ private fun sendGroup(group: Int) {
 
         if (enemy != null) {
             clearAndSelect(group = group, interrupt = true, queue = group)
-//            if (streamVehicleUpdates(group).count() == 0) {
             scale(avgX, avgY, factor = 0.5, interrupt = true, queue = group)
-//            }
             var distX = enemy.x - avgX
             var distY = enemy.y - avgY
             val hypot = hypot(distX, distY)
@@ -149,15 +152,14 @@ private fun sendGroup(group: Int) {
                 distX *= maxMoveDistance / hypot
                 distY *= maxMoveDistance / hypot
             }
-            move(distX, distY, maxSpeed = landGroupSpeed, interrupt = streamVehicleUpdates(group).count() != 0, queue = group)
+            clearAndSelect(group = group, queue = group)
+            move(distX, distY, maxSpeed = landGroupSpeed, interrupt = true, queue = group)
         }
 
         if (facility != null) {
             groupsToFacilitiesMap.put(group, facility.id)
             clearAndSelect(group = group, interrupt = true, queue = group)
-//            if (streamVehicleUpdates(group).count() == 0) {
             scale(avgX, avgY, factor = 0.5, interrupt = true, queue = group)
-//            }
             var distX = facility.left + facilityLength / 2 - avgX
             var distY = facility.top + facilityLength / 2 - avgY
             val hypot = hypot(distX, distY)
@@ -165,7 +167,8 @@ private fun sendGroup(group: Int) {
                 distX *= maxMoveDistance / hypot
                 distY *= maxMoveDistance / hypot
             }
-            move(distX, distY, maxSpeed = landGroupSpeed, interrupt = streamVehicleUpdates(group).count() != 0, queue = group)
+            clearAndSelect(group = group, queue = group)
+            move(distX, distY, maxSpeed = landGroupSpeed, interrupt = true, queue = group)
         }
     }
 }

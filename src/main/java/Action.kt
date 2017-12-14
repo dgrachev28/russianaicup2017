@@ -16,10 +16,6 @@ private var lastMove: MoveWrapper? = null
 var groupLastActionTick = mutableMapOf<Int, Int>()
 
 
-fun delay(group: Int = 0, priority: Int = defaultPriority, interrupt: Boolean = false, queue: Int = 0, action: () -> Unit) {
-    addMove(MoveWrapper({}, priority, interrupt, group, {}, action, queue = queue, action = ActionType.CLEAR_AND_SELECT))
-}
-
 fun rotate(x: Double, y: Double, group: Int = 0, angle: Double, priority: Int = defaultPriority, interrupt: Boolean = false, moveUpdater: (Move) -> Unit = {}, useNegativeTime: Boolean = false, queue: Int = 0) {
     val moveWrapper = MoveWrapper(getMove(ActionType.ROTATE, x, y, group, angle = angle), priority, interrupt, group, moveUpdater, useNegativeTime = useNegativeTime, queue = queue, action = ActionType.ROTATE)
     addMove(moveWrapper)
@@ -101,6 +97,9 @@ private fun addMove(moveWrapper: MoveWrapper) {
     priorityQueue.add(moveWrapper)
     moves.merge(moveWrapper.queue, priorityQueue, { oldValue, value -> oldValue.also { oldValue.add(value.peek()) } })
 }
+
+private var scaleActionTime = 0
+private var scaleActionMaxTime = 100
 
 fun makeAction(move: Move) {
     if (moves.isEmpty()) return

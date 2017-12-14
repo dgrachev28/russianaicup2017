@@ -132,6 +132,12 @@ fun getSelectionRectangle(vehicles: Iterable<Vehicle>): Rectangle =
                 vehicles.map { it.y }.max()!! + eps)
 
 
+fun getAlliesInRectangle(rectangle: Rectangle): Iterable<Vehicle> {
+    return streamVehicles(Ownership.ALLY).filter {
+        it.x > rectangle.left && it.y > rectangle.top && it.x < rectangle.right && it.y < rectangle.bottom
+    }
+}
+
 data class Rectangle(val left: Double,
                      val top: Double,
                      val right: Double,
