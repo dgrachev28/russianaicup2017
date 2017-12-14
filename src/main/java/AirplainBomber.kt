@@ -60,12 +60,10 @@ fun actBomber() {
     }
 
     if (checkEnemyInVisionRange()) return
-    if (enemyVehicleGroups.isNotEmpty()) {
-        if (moveBomberTimeout == 0) {
-            moveToEnemy()
-            moveBomberTimeout = 100
-        } else moveBomberTimeout--
-    }
+    if (moveBomberTimeout == 0) {
+        moveToEnemy()
+        moveBomberTimeout = 100
+    } else moveBomberTimeout--
 }
 
 private fun checkEnemyInAttackRange(): Boolean {
@@ -85,9 +83,9 @@ private fun checkEnemyInAttackRange(): Boolean {
 private fun checkEnemyInVisionRange(): Boolean {
     if (me!!.remainingNuclearStrikeCooldownTicks != 0) return false
     streamVehicles(bomberGroup).forEach { ally ->
-        val target = enemyVehicleGroups.find { hypot(ally.x - it.x, ally.y - it.y) < ally.visionRange * getVisionCoef(ally) }
+        val target = enemyVehicleGroups.find { hypot(ally.x - it.x, ally.y - it.y) < ally.visionRange * getVisionCoef(ally) * 1.15 }
         if (target != null) {
-            nuclearStrike(target.x - (target.x - ally.x) * 0.9, target.y - (target.y - ally.y) * 0.9, ally.id, priority = 5, interrupt = true)
+            nuclearStrike(target.x - (target.x - ally.x) * 0.2, target.y - (target.y - ally.y) * 0.2, ally.id, priority = 5, interrupt = true)
             return true
         }
     }
@@ -97,8 +95,13 @@ private fun checkEnemyInVisionRange(): Boolean {
 private fun moveToEnemy() {
     val x = streamVehicles(bomberGroup).map { it.x }.average()
     val y = streamVehicles(bomberGroup).map { it.y }.average()
-    enemyVehicleGroups.first().let {
+    if (enemyVehicleGroups.isEmpty()) {
         clearAndSelect(group = bomberGroup, priority = 5, interrupt = true, queue = bomberGroup)
-        move(it.x - x, it.y - y, priority = 5, interrupt = true, queue = bomberGroup)
+        move(900 - x, 900 - y, priority = 5, interrupt = true, queue = bomberGroup)
+    } else {
+        enemyVehicleGroups.first().let {
+            clearAndSelect(group = bomberGroup, priority = 5, interrupt = true, queue = bomberGroup)
+            move(it.x - x, it.y - y, priority = 5, interrupt = true, queue = bomberGroup)
+        }
     }
 }

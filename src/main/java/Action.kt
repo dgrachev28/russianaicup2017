@@ -13,8 +13,7 @@ private val moves = mutableMapOf<Int?, PriorityQueue<MoveWrapper>>()
 private val currentGroupMoves = mutableMapOf<Int?, MoveWrapper>()
 private var lastMove: MoveWrapper? = null
 
-
-
+var groupLastActionTick = mutableMapOf<Int, Int>()
 
 
 fun delay(group: Int = 0, priority: Int = defaultPriority, interrupt: Boolean = false, queue: Int = 0, action: () -> Unit) {
@@ -106,13 +105,13 @@ private fun addMove(moveWrapper: MoveWrapper) {
 fun makeAction(move: Move) {
     if (moves.isEmpty()) return
 
-    println("Queues total size: ${moves.flatMap { it.value }.count()}")
+    println("Queues total size: ${moves.flatMap { it.value }.count()}, Tick: ${world!!.tickIndex}")
 
     var moveWrapper = moves.filterValues { it.isNotEmpty() }
             .map { it.value.peek() }.sorted()
             .let { if (it.isEmpty()) return else it[0] }
 
-    if (moveWrapper.action == ActionType.CLEAR_AND_SELECT  && lastMove != null && moves[lastMove!!.queue]!!.isNotEmpty()) {
+    if (moveWrapper.action == ActionType.CLEAR_AND_SELECT && lastMove != null && moves[lastMove!!.queue]!!.isNotEmpty()) {
         if (needSelectionActions.contains(moves[lastMove!!.queue]!!.peek().action)) {
             moveWrapper = moves[lastMove!!.queue]!!.peek()
         }
@@ -129,11 +128,16 @@ fun makeAction(move: Move) {
                 lastMove = moveWrapper
             }
         }
+        if (moveWrapper.queue != 0) {
+            groupLastActionTick.put(moveWrapper.queue, world!!.tickIndex)
+        }
         printMove(move)
     }
 }
 
 fun getQueueSize(queue: Int) = if (moves[queue] == null) 0 else moves[queue]!!.count()
+
+fun getAllQueuesSize() = moves.values.sumBy { it.size }
 
 private fun isGroupStoppedMotion(moveWrapper: MoveWrapper) =
         streamVehicleUpdates(moveWrapper.queue).count() == 0

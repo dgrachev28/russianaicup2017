@@ -8,8 +8,8 @@ private val squareSize = 8 // squareSize * mapSize = 1024  - Размер все
 
 class VehicleGroup(vehicle: Vehicle? = null) {
     var vehicles: MutableList<Vehicle> = mutableListOf()
-    var x: Double = 0.toDouble()
-    var y: Double = 0.toDouble()
+    var x: Double = 0.0
+    var y: Double = 0.0
 
     init {
         vehicle?.let { addVehicle(it) }
@@ -20,6 +20,28 @@ class VehicleGroup(vehicle: Vehicle? = null) {
         y = (y * vehicles.size + vehicle.y) / (vehicles.size + 1)
         vehicles.add(vehicle)
     }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as VehicleGroup
+
+        if (vehicles != other.vehicles) return false
+        if (x != other.x) return false
+        if (y != other.y) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = vehicles.hashCode()
+        result = 31 * result + x.hashCode()
+        result = 31 * result + y.hashCode()
+        return result
+    }
+
+
 }
 
 fun getEnemyGroups(): List<VehicleGroup> {
@@ -170,5 +192,7 @@ enum class Ownership {
 
 fun printMove(move: Move) {
     println("Tick=${world!!.tickIndex}")
-    println("Move(action=${move.action}, group=${move.group}, left=${move.left}, top=${move.top}, right=${move.right}, bottom=${move.bottom}, x=${move.x}, y=${move.y}, angle=${move.angle}, factor=${move.factor}, maxSpeed=${move.maxSpeed}, maxAngularSpeed=${move.maxAngularSpeed}, vehicleType=${move.vehicleType}, facilityId=${move.facilityId}, vehicleId=${move.vehicleId})")
+    println("Move(action=${move.action}, group=${move.group}, left=${move.left}, top=${move.top}, right=${move.right}," +
+            " bottom=${move.bottom}, x=${move.x}, y=${move.y}, angle=${move.angle}, factor=${move.factor}, maxSpeed=${move.maxSpeed}," +
+            " maxAngularSpeed=${move.maxAngularSpeed}, vehicleType=${move.vehicleType}, facilityId=${move.facilityId}, vehicleId=${move.vehicleId})")
 }

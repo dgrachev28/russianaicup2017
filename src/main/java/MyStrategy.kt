@@ -46,7 +46,6 @@ class MyStrategy : Strategy {
         game = pGame
         move = pMove
         previousVehicleById = HashMap(vehicleById)
-        enemyGroups = getEnemyGroups()
 
         for (vehicle in world!!.newVehicles) {
             vehicleById.put(vehicle.id, vehicle)
@@ -64,6 +63,7 @@ class MyStrategy : Strategy {
                 updateTickByVehicleId.put(vehicleId, world!!.tickIndex)
             }
         }
+        enemyGroups = getEnemyGroups()
     }
 
     private fun move() {
